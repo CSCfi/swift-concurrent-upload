@@ -11,13 +11,19 @@
 # $1 is the file to be copied, $2 is the destination container
 
 # Get the openstack authentication token
-OS_AUTH_TOKEN=$(openstack token issue -f value | sed -n 2p)
+if [[ -z $OS_AUTH_TOKEN ]]; then
+    OS_AUTH_TOKEN=$(openstack token issue -f value | sed -n 2p)
+fi
 
 # Get Openstack swift URL
-SWIFT_URL=$(curl $OS_AUTH_URL/auth/catalog -s -X GET -H "X-Auth-Token: $OS_AUTH_TOKEN" \
-    | jq ".catalog" \
-    | jq -c '.[] | select(.type == "object-store")' \
-    | jq -r ".endpoints[2].url")
+if [[ -n OS_STORAGE_URL ]]; then
+    SWIFT_URL=$OS_STORAGE_URL
+else
+    SWIFT_URL=$(curl $OS_AUTH_URL/auth/catalog -s -X GET -H "X-Auth-Token: $OS_AUTH_TOKEN" \
+        | jq ".catalog" \
+        | jq -c '.[] | select(.type == "object-store")' \
+        | jq -r ".endpoints[2].url")
+fi
 
 set -m; # Enable job control
 
@@ -58,6 +64,8 @@ fi
 if [[ -z $MAX_PROCESSES ]]; then
     MAX_PROCESSES=4
 fi
+
+ensure_container $2
 
 for ((i = 0; i * 5368709120 < $filesize; i++)); do
     # Throttle opening too many jobs, with ugly busywaiting
