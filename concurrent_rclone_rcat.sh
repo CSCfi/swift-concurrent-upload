@@ -32,6 +32,10 @@ upload_segment() {
         | rclone --swift-no-chunk rcat $RCLONE_DESTINATION:$2_segments/$1/$4/$(printf "%08d" $3)
 };
 
+ensure_container() {
+    curl -s -X PUT "$SWIFT_URL/${1}" -H "X-Auth-Token: $OS_AUTH_TOKEN"
+}
+
 push_manifest() {
     # Push Openstack Swift DLO manifest
     curl -s -X PUT "$SWIFT_URL/${2}/${1}" \
